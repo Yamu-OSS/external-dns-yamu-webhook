@@ -66,6 +66,7 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 
 // ApplyChanges applies a given set of changes in the DNS provider.
 func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
+	log.Debugf("apply: changes: %+v", changes)
 	// TODO: 创建更新删除，集群中由 exterNal-dns 管理的所有记录
 	// for _, endpoint := range append(changes.UpdateOld, changes.Delete...) {
 	// 	if err := p.client.DeleteHostOverride(endpoint); err != nil {
@@ -80,7 +81,7 @@ func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	// }
 
 	// p.client.ReconfigureUnbound()
-
+	log.Debugf("apply: changes applied")
 	return nil
 }
 
