@@ -1,14 +1,14 @@
-package opnsense
+package ddi
 
 // Config represents the configuration for the UniFi API.
 type Config struct {
-	Host          string `env:"OPNSENSE_HOST,notEmpty"`
-	Key           string `env:"OPNSENSE_API_KEY,notEmpty"`
-	Secret        string `env:"OPNSENSE_API_SECRET,notEmpty"`
-	SkipTLSVerify bool   `env:"OPNSENSE_SKIP_TLS_VERIFY" envDefault:"true"`
+	Host          string `env:"YAMU_HOST,notEmpty"`
+	User          string `env:"YAMU_API_USER,notEmpty"`
+	Key           string `env:"YAMU_API_KEY,notEmpty"`
+	SkipTLSVerify bool   `env:"YAMU_DDI_SKIP_TLS_VERIFY" envDefault:"true"`
 }
 
-// DNSRecord represents a DNS record in the Opnsense Unbound API.
+// DNSRecord represents a DNS record in the YamuDDI Unbound API.
 type DNSRecord struct {
 	Uuid        string `json:"uuid"`
 	Enabled     string `json:"enabled"`
@@ -21,7 +21,7 @@ type DNSRecord struct {
 	MxPrio      string `json:"mxprio,omitempty"`
 }
 
-// unboundRecordsList is the main item returned from the Opnsense Unbound API
+// unboundRecordsList is the main item returned from the YamuDDI Unbound API
 // since it has some decorators we just throw this struct away
 type unboundRecordsList struct {
 	RowCount int         `json:"rowCount"`
@@ -30,7 +30,7 @@ type unboundRecordsList struct {
 	Rows     []DNSRecord `json:"Rows"`
 }
 
-// Specific format for POST against the Opnsense Unbound API
+// Specific format for POST against the YamuDDI Unbound API
 type unboundAddHostOverride struct {
 	Host DNSRecord `json:"host"`
 }

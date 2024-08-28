@@ -53,7 +53,7 @@
       name: webhook
       webhook:
         image:
-          repository: ghcr.io/Yamu-OSS/external-dns-yamu-webhook
+          repository: ghcr.io/yamu-oss/external-dns-yamu-webhook
           tag: main # replace with a versioned release tag
         env:
           - name: YAMU_API_USER

@@ -1,8 +1,6 @@
-module github.com/crutonjohn/external-dns-provider-opnsense
+module github.com/Yamu-OSS/external-dns-yamu-webhook
 
-go 1.22.2
-
-toolchain go1.22.3
+go 1.22.4
 
 require (
 	github.com/caarlos0/env/v11 v11.0.1

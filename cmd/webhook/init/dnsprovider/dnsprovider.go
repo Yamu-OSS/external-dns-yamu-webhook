@@ -5,20 +5,20 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/cmd/webhook/init/configuration"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/internal/ddi"
 	"github.com/caarlos0/env/v11"
-	"github.com/crutonjohn/external-dns-provider-opnsense/cmd/webhook/init/configuration"
-	opnsense "github.com/crutonjohn/external-dns-provider-opnsense/internal/yamu-ddi"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/provider"
 
 	log "github.com/sirupsen/logrus"
 )
 
-type OpnsenseProviderFactory func(baseProvider *provider.BaseProvider, opnsenseConfig *opnsense.Config) provider.Provider
+type DDIProviderFactory func(baseProvider *provider.BaseProvider, config *ddi.Config) provider.Provider
 
 func Init(config configuration.Config) (provider.Provider, error) {
 	var domainFilter endpoint.DomainFilter
-	createMsg := "creating opnsense provider with "
+	createMsg := "creating ddi provider with "
 
 	if config.RegexDomainFilter != "" {
 		createMsg += fmt.Sprintf("regexp domain filter: '%s', ", config.RegexDomainFilter)
@@ -45,10 +45,10 @@ func Init(config configuration.Config) (provider.Provider, error) {
 	}
 	log.Info(createMsg)
 
-	opnsenseConfig := opnsense.Config{}
-	if err := env.Parse(&opnsenseConfig); err != nil {
-		return nil, fmt.Errorf("reading opnsense configuration failed: %v", err)
+	ddiConfig := ddi.Config{}
+	if err := env.Parse(&ddiConfig); err != nil {
+		return nil, fmt.Errorf("reading ddi configuration failed: %v", err)
 	}
 
-	return opnsense.NewOpnsenseProvider(domainFilter, &opnsenseConfig)
+	return ddi.NewYamuDDIProvider(domainFilter, &ddiConfig)
 }

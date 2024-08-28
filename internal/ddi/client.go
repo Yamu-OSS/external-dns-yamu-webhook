@@ -1,4 +1,4 @@
-package opnsense
+package ddi
 
 import (
 	"bytes"
@@ -25,8 +25,8 @@ type httpClient struct {
 	baseURL *url.URL
 }
 
-// newOpnsenseClient creates a new DNS provider client.
-func newOpnsenseClient(config *Config) (*httpClient, error) {
+// newYamuDDIClient creates a new DNS provider client.
+func newYamuDDIClient(config *Config) (*httpClient, error) {
 	u, err := url.Parse(config.Host)
 	if err != nil {
 		return nil, fmt.Errorf("parse url: %w", err)
@@ -53,29 +53,31 @@ func newOpnsenseClient(config *Config) (*httpClient, error) {
 
 // login performs a basic call to validate credentials
 func (c *httpClient) login() error {
-	// Perform the test call by getting service status
-	resp, err := c.doRequest(
-		http.MethodGet,
-		"service/status",
-		nil,
-	)
-	if err != nil {
-		return err
-	}
+	// TODO: openapi 身份校验
 
-	defer resp.Body.Close()
+	// Perform the test call by getting service status
+	// resp, err := c.doRequest(
+	// 	http.MethodGet,
+	// 	"service/status",
+	// 	nil,
+	// )
+	// if err != nil {
+	// 	return err
+	// }
+
+	// defer resp.Body.Close()
 
 	// Check if the login was successful
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		log.Errorf("login: failed: %s, response: %s", resp.Status, string(respBody))
-		return fmt.Errorf("login: failed: %s", resp.Status)
-	}
+	// if resp.StatusCode != http.StatusOK {
+	// 	respBody, _ := io.ReadAll(resp.Body)
+	// 	log.Errorf("login: failed: %s, response: %s", resp.Status, string(respBody))
+	// 	return fmt.Errorf("login: failed: %s", resp.Status)
+	// }
 
 	return nil
 }
 
-// doRequest makes an HTTP request to the Opnsense firewall.
+// doRequest makes an HTTP request to the Yamu firewall.
 func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Response, error) {
 	u := c.baseURL.ResolveReference(&url.URL{
 		Path: path,
@@ -104,7 +106,7 @@ func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Respo
 	return resp, nil
 }
 
-// GetHostOverrides retrieves the list of HostOverrides from the Opnsense Firewall's Unbound API.
+// GetHostOverrides retrieves the list of HostOverrides from the Yamu Firewall's Unbound API.
 // These are equivalent to A or AAAA records
 func (c *httpClient) GetHostOverrides() ([]DNSRecord, error) {
 	resp, err := c.doRequest(
@@ -127,7 +129,7 @@ func (c *httpClient) GetHostOverrides() ([]DNSRecord, error) {
 	return records.Rows, nil
 }
 
-// CreateHostOverride creates a new DNS A or AAAA record in the Opnsense Firewall's Unbound API.
+// CreateHostOverride creates a new DNS A or AAAA record in the YamuDDI Firewall's Unbound API.
 func (c *httpClient) CreateHostOverride(endpoint *endpoint.Endpoint) (*DNSRecord, error) {
 	log.Debugf("create: Try pulling pre-existing Unbound %s record: %s", endpoint.RecordType, endpoint.DNSName)
 	lookup, err := c.lookupHostOverrideIdentifier(endpoint.DNSName, endpoint.RecordType)
@@ -179,7 +181,7 @@ func (c *httpClient) CreateHostOverride(endpoint *endpoint.Endpoint) (*DNSRecord
 	return nil, nil
 }
 
-// DeleteHostOverride deletes a DNS record from the Opnsense Firewall's Unbound API.
+// DeleteHostOverride deletes a DNS record from the YamuDDI Firewall's Unbound API.
 func (c *httpClient) DeleteHostOverride(endpoint *endpoint.Endpoint) error {
 	log.Debugf("delete: Deleting record %+v", endpoint)
 	lookup, err := c.lookupHostOverrideIdentifier(endpoint.DNSName, endpoint.RecordType)
@@ -201,7 +203,7 @@ func (c *httpClient) DeleteHostOverride(endpoint *endpoint.Endpoint) error {
 	return nil
 }
 
-// lookupHostOverrideIdentifier finds a HostOverride in the Opnsense Firewall's Unbound API.
+// lookupHostOverrideIdentifier finds a HostOverride in the YamuDDI Firewall's Unbound API.
 func (c *httpClient) lookupHostOverrideIdentifier(key, recordType string) (*DNSRecord, error) {
 	records, err := c.GetHostOverrides()
 	if err != nil {
@@ -248,8 +250,8 @@ func (c *httpClient) ReconfigureUnbound() error {
 // setHeaders sets the headers for the HTTP request.
 func (c *httpClient) setHeaders(req *http.Request) {
 	// Add basic auth header
-	opnsenseAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.Config.Key, c.Config.Secret)))
-	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", opnsenseAuth))
+	yamuDDIAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.Config.User, c.Config.Key)))
+	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", yamuDDIAuth))
 	req.Header.Add("Accept", "application/json")
 	if req.Method != http.MethodGet {
 		req.Header.Add("Content-Type", "application/json; charset=utf-8")
