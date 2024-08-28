@@ -93,6 +93,6 @@
 7. 安装
 
     ```sh
-    helm install external-dns-yamu external-dns/external-dns -f external-dns-yamu-values yaml --version 1.1.3 -n external-dns
+    helm install external-dns-yamu external-dns/external-dns -f external-dns-yamu-values yaml --version 1.14.5 -n external-dns
     ```
 
