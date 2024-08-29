@@ -70,6 +70,10 @@
             value: https://192.168.1.1 # 替换为SmartDDI网管地址
           - name: LOG_LEVEL
             value: debug
+          - name: VIEW
+            value: "default" # 替换为客户默认视图
+          - name: DEFAULT_TTL
+            value: "600" # 替换为客户默认TTL
         livenessProbe:
           httpGet:
             path: /healthz

@@ -50,5 +50,7 @@ func Init(config configuration.Config) (provider.Provider, error) {
 		return nil, fmt.Errorf("reading ddi configuration failed: %v", err)
 	}
 
+	log.Debugf("configuration: %v", config)
+
 	return ddi.NewYamuDDIProvider(domainFilter, &ddiConfig)
 }
