@@ -74,6 +74,8 @@
             value: "default" # 替换为客户默认视图
           - name: DEFAULT_TTL
             value: "600" # 替换为客户默认TTL
+          - name: DOMAIN_FILTER
+            value: "yamu.com,yamu1.com" # 替换为客户域名
         livenessProbe:
           httpGet:
             path: /healthz
@@ -91,7 +93,6 @@
     policy: sync
     sources: ["ingress", "service", "crd"]
     registry: noop
-    domainFilters: ["yamu.com"] # 替换为客户域名
     ```
 
 7. 安装
