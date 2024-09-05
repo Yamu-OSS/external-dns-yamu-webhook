@@ -48,37 +48,7 @@ func newYamuDDIClient(config *Config) (*httpClient, error) {
 		baseURL: u,
 	}
 
-	if err := client.login(); err != nil {
-		return nil, err
-	}
-
 	return client, nil
-}
-
-// login performs a basic call to validate credentials
-func (c *httpClient) login() error {
-	// TODO: openapi 身份校验
-
-	// Perform the test call by getting service status
-	// resp, err := c.doRequest(
-	// 	http.MethodGet,
-	// 	"service/status",
-	// 	nil,
-	// )
-	// if err != nil {
-	// 	return err
-	// }
-
-	// defer resp.Body.Close()
-
-	// Check if the login was successful
-	// if resp.StatusCode != http.StatusOK {
-	// 	respBody, _ := io.ReadAll(resp.Body)
-	// 	log.Errorf("login: failed: %s, response: %s", resp.Status, string(respBody))
-	// 	return fmt.Errorf("login: failed: %s", resp.Status)
-	// }
-
-	return nil
 }
 
 // doRequest makes an HTTP request to the Yamu firewall.
@@ -101,12 +71,11 @@ func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Respo
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	log.Debugf("doRequest: response code from %s request to %s: %d", method, u, resp.StatusCode)
 
 	if resp.StatusCode == http.StatusBadRequest {
-		defer resp.Body.Close()
-
 		var code respCode
 		if err = json.NewDecoder(resp.Body).Decode(&code); err != nil {
 			return nil, err
