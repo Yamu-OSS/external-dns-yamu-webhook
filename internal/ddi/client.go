@@ -10,13 +10,17 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"sigs.k8s.io/external-dns/endpoint"
 )
 
-const emptyJSONObject = "{}"
+var (
+	apiDnsPrefix = "/openapi/dns"
+	apiRRCreate  = "zone/auth/rr/view/%s/zone/%s"
+	apiRRDel     = apiRRCreate
+	apiRRGet     = "zone/auth/rr/all/view/%s/zone/%s?source=%s"
+	apiZoneGet   = "zone/auth/view/%s/zone/%s"
+)
 
 // httpClient is the DNS provider client.
 type httpClient struct {
@@ -31,7 +35,7 @@ func newYamuDDIClient(config *Config) (*httpClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse url: %w", err)
 	}
-	u.Path = path.Join(u.Path, "api/unbound")
+	u.Path = path.Join(u.Path, apiDnsPrefix)
 
 	// Create the HTTP client
 	client := &httpClient{
@@ -79,17 +83,18 @@ func (c *httpClient) login() error {
 
 // doRequest makes an HTTP request to the Yamu firewall.
 func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Response, error) {
-	u := c.baseURL.ResolveReference(&url.URL{
-		Path: path,
-	})
+	p, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
 
+	u := c.baseURL.ResolveReference(p)
 	log.Debugf("doRequest: making %s request to %s", method, u)
 
 	req, err := http.NewRequest(method, u.String(), body)
 	if err != nil {
 		return nil, err
 	}
-
 	c.setHeaders(req)
 
 	resp, err := c.Client.Do(req)
@@ -99,6 +104,19 @@ func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Respo
 
 	log.Debugf("doRequest: response code from %s request to %s: %d", method, u, resp.StatusCode)
 
+	if resp.StatusCode == http.StatusBadRequest {
+		defer resp.Body.Close()
+
+		var code respCode
+		if err = json.NewDecoder(resp.Body).Decode(&code); err != nil {
+			return nil, err
+		}
+
+		if code.RCode != 0 {
+			return nil, fmt.Errorf("%s", code.Description)
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("doRequest: %s request to %s was not successful: %d", method, u, resp.StatusCode)
 	}
@@ -106,145 +124,105 @@ func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Respo
 	return resp, nil
 }
 
-// GetHostOverrides retrieves the list of HostOverrides from the Yamu Firewall's Unbound API.
-// These are equivalent to A or AAAA records
-func (c *httpClient) GetHostOverrides() ([]DNSRecord, error) {
+// GetHostOverrides retrieves the list of records from the YamuDDI API.
+func (c *httpClient) GetHostOverrides(zone string) ([]*DNSRecord, error) {
+	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiRRGet, c.View, zone, source))
 	resp, err := c.doRequest(
 		http.MethodGet,
-		"settings/searchHostOverride",
+		p,
 		nil,
 	)
 	if err != nil {
+		log.Errorf("method: %s, path: %s", http.MethodGet, p)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var records unboundRecordsList
+	var records respRRs
 	if err = json.NewDecoder(resp.Body).Decode(&records); err != nil {
 		return nil, err
 	}
 
-	log.Debugf("gethost: retrieved records: %+v", records.Rows)
+	log.Debugf("gethost: retrieved records: %+v", len(records.Data))
 
-	return records.Rows, nil
+	return records.Data, nil
 }
 
-// CreateHostOverride creates a new DNS A or AAAA record in the YamuDDI Firewall's Unbound API.
-func (c *httpClient) CreateHostOverride(endpoint *endpoint.Endpoint) (*DNSRecord, error) {
-	log.Debugf("create: Try pulling pre-existing Unbound %s record: %s", endpoint.RecordType, endpoint.DNSName)
-	lookup, err := c.lookupHostOverrideIdentifier(endpoint.DNSName, endpoint.RecordType)
+// CreateHostOverride creates a new DNS A or AAAA or CNAME record in the YamuDDI API.
+func (c *httpClient) CreateHostOverride(zone string, rr *DNSRecord) error {
+	log.Debugf("create recored. zone: %s, rr-counts: 1", zone)
+	jsonBody, err := json.Marshal([]*DNSRecord{rr})
 	if err != nil {
-		return nil, err
+		return err
 	}
+	return c.createHostOverride(zone, jsonBody)
+}
 
-	if lookup != nil {
-		log.Debugf("create: Found uuid: %s", lookup.Uuid)
-		log.Debugf("create: Found existing %s record for %s : %s", endpoint.RecordType, endpoint.DNSName, lookup.Uuid)
-		return lookup, nil
-	}
-
-	splitHost := SplitUnboundFQDN(endpoint.DNSName)
-
-	jsonBody, err := json.Marshal(unboundAddHostOverride{
-		Host: DNSRecord{
-			Enabled:  "1",
-			Rr:       endpoint.RecordType,
-			Server:   endpoint.Targets[0],
-			Hostname: splitHost[0],
-			Domain:   splitHost[1],
-		}})
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debugf("create: POST: %s", string(jsonBody))
-	resp, err := c.doRequest(
+// createHostOverride
+func (c *httpClient) createHostOverride(zone string, jsonBody []byte) error {
+	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiRRCreate, c.View, zone))
+	_, err := c.doRequest(
 		http.MethodPost,
-		"settings/addHostOverride",
+		p,
 		bytes.NewReader(jsonBody),
 	)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// TODO: Better error handling if API returns:
-	// {"result":"failed"}
-	//if resp.Body != nil && resp.Body
-
-	var record unboundAddHostOverride
-	if err = json.NewDecoder(resp.Body).Decode(&record); err != nil {
-		return nil, err
-	}
-	log.Debugf("create: created record: %+v", record)
-
-	return nil, nil
-}
-
-// DeleteHostOverride deletes a DNS record from the YamuDDI Firewall's Unbound API.
-func (c *httpClient) DeleteHostOverride(endpoint *endpoint.Endpoint) error {
-	log.Debugf("delete: Deleting record %+v", endpoint)
-	lookup, err := c.lookupHostOverrideIdentifier(endpoint.DNSName, endpoint.RecordType)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("delete: Found match %s", lookup.Uuid)
-
-	log.Debugf("delete: Sending POST %s", lookup.Uuid)
-	if _, err = c.doRequest(
-		http.MethodPost,
-		path.Join("settings/delHostOverride", lookup.Uuid),
-		strings.NewReader(emptyJSONObject),
-	); err != nil {
+		log.Errorf("method: %s, path: %s, body: %s", http.MethodPost, p, string(jsonBody))
 		return err
 	}
 
 	return nil
 }
 
-// lookupHostOverrideIdentifier finds a HostOverride in the YamuDDI Firewall's Unbound API.
-func (c *httpClient) lookupHostOverrideIdentifier(key, recordType string) (*DNSRecord, error) {
-	records, err := c.GetHostOverrides()
+// DeleteHostOverrideBulk deletes DNS records from the YamuDDI API.
+func (c *httpClient) DeleteHostOverrideBulk(zone string, rrs []*DNSRecord) error {
+	log.Debugf("create recored. zone: %s, rr-counts: %d", zone, len(rrs))
+	jsonBody, err := json.Marshal(DNSRecordsDel{
+		RRs: rrs,
+	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	log.Debug("lookup: Splitting FQDN")
-	splitHost := SplitUnboundFQDN(key)
 
-	for _, r := range records {
-		log.Debugf("lookup: Checking record: Host=%s, Domain=%s, Type=%s, UUID=%s", r.Hostname, r.Domain, EmbellishUnboundType(r.Rr), r.Uuid)
-		if r.Hostname == splitHost[0] && r.Domain == splitHost[1] && EmbellishUnboundType(r.Rr) == EmbellishUnboundType(recordType) {
-			log.Debugf("lookup: UUID Match Found: %s", r.Uuid)
-			return &r, nil
-		}
-	}
-	log.Debugf("lookup: No matching record found for Host=%s, Domain=%s, Type=%s", splitHost[0], splitHost[1], EmbellishUnboundType(recordType))
-	return nil, nil
-}
-
-// ReconfigureUnbound performs a reconfigure action in Unbound after editing records
-func (c *httpClient) ReconfigureUnbound() error {
-	// Perform the reconfigure
-	resp, err := c.doRequest(
-		http.MethodPost,
-		"service/reconfigure",
-		strings.NewReader(emptyJSONObject),
+	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiRRDel, c.View, zone))
+	_, err = c.doRequest(
+		http.MethodDelete,
+		p,
+		bytes.NewReader(jsonBody),
 	)
 	if err != nil {
+		log.Errorf("method: %s, path: %s, body: %s", http.MethodDelete, p, string(jsonBody))
 		return err
 	}
 
+	return nil
+}
+
+// ZoneExist checks if a zone exists in the DDI filter list.
+func (c *httpClient) ZoneExist(domain string) bool {
+	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiZoneGet, c.View, domain))
+	resp, err := c.doRequest(
+		http.MethodGet,
+		p,
+		nil,
+	)
+	if err != nil {
+		log.Errorf("Failed to get zone: %s", err)
+		return false
+	}
 	defer resp.Body.Close()
 
-	// Check if the login was successful
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		log.Errorf("reconfigure: login failed: %s, response: %s", resp.Status, string(respBody))
-		return fmt.Errorf("reconfigure: unbound failed: %s", resp.Status)
+	var code respCode
+	if err = json.NewDecoder(resp.Body).Decode(&code); err != nil {
+		log.Errorf("Failed to get zone: %s", err)
+		return false
 	}
 
-	return nil
+	if code.RCode != 0 {
+		log.Errorf("Failed to get zone: %s", code.Description)
+		return false
+	}
+	return true
 }
 
 // setHeaders sets the headers for the HTTP request.

@@ -17,8 +17,6 @@ type Config struct {
 	ExcludeDomains       []string      `env:"EXCLUDE_DOMAIN_FILTER" envDefault:""`
 	RegexDomainFilter    string        `env:"REGEXP_DOMAIN_FILTER" envDefault:""`
 	RegexDomainExclusion string        `env:"REGEXP_DOMAIN_FILTER_EXCLUSION" envDefault:""`
-	View                 string        `env:"VIEW" envDefault:""`
-	DefaultTTL           int           `env:"DEFAULT_TTL" envDefault:"0"`
 }
 
 // Init sets up configuration by reading set environmental variables
