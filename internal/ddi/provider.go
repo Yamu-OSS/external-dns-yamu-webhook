@@ -46,7 +46,8 @@ func NewYamuDDIProvider(domainFilter endpoint.DomainFilter, config *Config) (pro
 
 // Records returns the list of HostOverride records in YamuDDI Unbound.
 func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint, err error) {
-	log.Debugf("records: retrieving records from YamuDDI")
+	log.Debugf("records: retrieving: %+v", endpoints)
+
 	p.setDDIDomainFilter()
 
 	endpoints = make([]*endpoint.Endpoint, 0)
@@ -66,8 +67,7 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 			endpoints = append(endpoints, ep)
 		}
 	}
-
-	log.Debugf("records: retrieved: %+v", endpoints)
+	log.Infof("records: retrieved records from YamuDDI")
 
 	return endpoints, nil
 }
@@ -102,7 +102,7 @@ func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 			}
 		}
 	}
-	log.Debugf("apply: changes applied")
+	log.Infof("apply: changes applied")
 	return nil
 }
 
@@ -121,12 +121,12 @@ func (p *Provider) convertDnsRecord(req []*endpoint.Endpoint) (map[string][]*DNS
 	rd := make(map[string][]*DNSRecord, 0)
 	for _, ep := range req {
 		if !arrays.Contains(supportTypes, ep.RecordType) {
-			log.Debugf("RecordType %s is not supported", ep.RecordType)
+			log.Infof("RecordType %s is not supported", ep.RecordType)
 			continue
 		}
 		pre, suff := domain.SplitSuffixToDomain(ep.DNSName, p.domainFilterDDI)
 		if suff == "" {
-			log.Debugf("Does not match zone: %v", ep.DNSName)
+			log.Infof("Does not match zone: %v", ep.DNSName)
 			continue
 		}
 
