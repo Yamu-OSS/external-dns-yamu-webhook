@@ -147,6 +147,10 @@ func (p *Provider) convertDnsRecord(req []*endpoint.Endpoint) (map[string][]*DNS
 		if p.client.Config.DefaultTTL == 0 && ep.RecordTTL == 0 {
 			dnsr.TTLStrategy = strategyInherit
 		}
+		if p.client.Config.DefaultTTL != 0 && ep.RecordTTL == 0 {
+			// if the TTL is not set and the default TTL is not 0, use the default TTL
+			dnsr.TTL = p.client.Config.DefaultTTL
+		}
 		rd[suff] = append(rd[suff], dnsr)
 	}
 
