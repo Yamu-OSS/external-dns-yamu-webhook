@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -41,6 +42,7 @@ func newYamuDDIClient(config *Config) (*httpClient, error) {
 	client := &httpClient{
 		Config: config,
 		Client: &http.Client{
+			Timeout: time.Duration(config.OpenAPITimeout) * time.Second,
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: config.SkipTLSVerify},
 			},

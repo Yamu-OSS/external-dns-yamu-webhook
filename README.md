@@ -76,6 +76,8 @@
             value: "600" # 替换为客户默认TTL
           - name: DOMAIN_FILTER
             value: "yamu.com,yamu1.com" # 替换为客户域名
+          - name: YAMU_OPENAPI_TIMEOUT
+            value: 60
         livenessProbe:
           httpGet:
             path: /healthz
