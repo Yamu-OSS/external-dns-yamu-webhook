@@ -71,11 +71,11 @@ func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Respo
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	log.Debugf("doRequest: response code from %s request to %s: %d", method, u, resp.StatusCode)
 
 	if resp.StatusCode == http.StatusBadRequest {
+		defer resp.Body.Close()
 		var code respCode
 		if err = json.NewDecoder(resp.Body).Decode(&code); err != nil {
 			return nil, err
