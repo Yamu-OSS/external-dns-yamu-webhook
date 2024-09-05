@@ -52,10 +52,10 @@ func newYamuDDIClient(config *Config) (*httpClient, error) {
 }
 
 // doRequest makes an HTTP request to the Yamu firewall.
-func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Response, error) {
+func (c *httpClient) doRequest(method, path string, body io.Reader, data any) error {
 	p, err := url.Parse(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	u := c.baseURL.ResolveReference(p)
@@ -63,52 +63,54 @@ func (c *httpClient) doRequest(method, path string, body io.Reader) (*http.Respo
 
 	req, err := http.NewRequest(method, u.String(), body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	c.setHeaders(req)
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	defer resp.Body.Close()
 
 	log.Debugf("doRequest: response code from %s request to %s: %d", method, u, resp.StatusCode)
 
 	if resp.StatusCode == http.StatusBadRequest {
-		defer resp.Body.Close()
 		var code respCode
 		if err = json.NewDecoder(resp.Body).Decode(&code); err != nil {
-			return nil, err
+			return err
 		}
 
 		if code.RCode != 0 {
-			return nil, fmt.Errorf("%s", code.Description)
+			return fmt.Errorf("%s", code.Description)
 		}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("doRequest: %s request to %s was not successful: %d", method, u, resp.StatusCode)
+		return fmt.Errorf("doRequest: %s request to %s was not successful: %d", method, u, resp.StatusCode)
 	}
 
-	return resp, nil
+	if data == nil {
+		return nil
+	}
+
+	return json.NewDecoder(resp.Body).Decode(data)
 }
 
 // GetHostOverrides retrieves the list of records from the YamuDDI API.
 func (c *httpClient) GetHostOverrides(zone string) ([]*DNSRecord, error) {
 	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiRRGet, c.View, zone, source))
-	resp, err := c.doRequest(
+
+	var records respRRs
+	err := c.doRequest(
 		http.MethodGet,
 		p,
 		nil,
+		&records,
 	)
+
 	if err != nil {
 		log.Errorf("method: %s, path: %s", http.MethodGet, p)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var records respRRs
-	if err = json.NewDecoder(resp.Body).Decode(&records); err != nil {
 		return nil, err
 	}
 
@@ -130,11 +132,13 @@ func (c *httpClient) CreateHostOverride(zone string, rr *DNSRecord) error {
 // createHostOverride
 func (c *httpClient) createHostOverride(zone string, jsonBody []byte) error {
 	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiRRCreate, c.View, zone))
-	_, err := c.doRequest(
+	err := c.doRequest(
 		http.MethodPost,
 		p,
 		bytes.NewReader(jsonBody),
+		nil,
 	)
+
 	if err != nil {
 		log.Errorf("method: %s, path: %s, body: %s", http.MethodPost, p, string(jsonBody))
 		return err
@@ -154,11 +158,14 @@ func (c *httpClient) DeleteHostOverrideBulk(zone string, rrs []*DNSRecord) error
 	}
 
 	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiRRDel, c.View, zone))
-	_, err = c.doRequest(
+
+	err = c.doRequest(
 		http.MethodDelete,
 		p,
 		bytes.NewReader(jsonBody),
+		nil,
 	)
+
 	if err != nil {
 		log.Errorf("method: %s, path: %s, body: %s", http.MethodDelete, p, string(jsonBody))
 		return err
@@ -170,19 +177,15 @@ func (c *httpClient) DeleteHostOverrideBulk(zone string, rrs []*DNSRecord) error
 // ZoneExist checks if a zone exists in the DDI filter list.
 func (c *httpClient) ZoneExist(domain string) bool {
 	p := path.Join(c.baseURL.Path, fmt.Sprintf(apiZoneGet, c.View, domain))
-	resp, err := c.doRequest(
+	var code respCode
+
+	err := c.doRequest(
 		http.MethodGet,
 		p,
 		nil,
+		&code,
 	)
 	if err != nil {
-		log.Errorf("Failed to get zone: %s", err)
-		return false
-	}
-	defer resp.Body.Close()
-
-	var code respCode
-	if err = json.NewDecoder(resp.Body).Decode(&code); err != nil {
 		log.Errorf("Failed to get zone: %s", err)
 		return false
 	}
@@ -191,6 +194,7 @@ func (c *httpClient) ZoneExist(domain string) bool {
 		log.Errorf("Failed to get zone: %s", code.Description)
 		return false
 	}
+
 	return true
 }
 
