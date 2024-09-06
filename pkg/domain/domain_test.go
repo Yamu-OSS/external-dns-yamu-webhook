@@ -171,6 +171,15 @@ func TestSplitSuffixToDomain(t *testing.T) {
 			wantSuff: "", // 未匹配到
 		},
 		{
+			name: "test5-1",
+			args: args{
+				s:       "abc.COM.",
+				suffixs: []string{"e.abc.com"},
+			},
+			wantPre:  "abc.COM",
+			wantSuff: "", // 未匹配到
+		},
+		{
 			name: "test6",
 			args: args{
 				s:       "abc.com.",
@@ -221,6 +230,22 @@ func TestHostAddDomain(t *testing.T) {
 			args: args{
 				host:   "abc",
 				domain: ".",
+			},
+			want: "abc",
+		},
+		{
+			name: "test4",
+			args: args{
+				host:   "",
+				domain: ".",
+			},
+			want: "",
+		},
+		{
+			name: "test5",
+			args: args{
+				host:   "",
+				domain: "abc.",
 			},
 			want: "abc",
 		},

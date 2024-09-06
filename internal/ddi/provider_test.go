@@ -29,6 +29,7 @@ func init() {
 
 	RRs = &plan.Changes{
 		Create: []*endpoint.Endpoint{
+			{DNSName: "test.com", Targets: []string{"10.233.71.55", "10.233.71.9", "10.233.74.210"}, RecordTTL: 0, RecordType: "A"},
 			{DNSName: "www.test.com", Targets: []string{"123.123.123.123"}, RecordTTL: 0, RecordType: "A"},
 			{DNSName: "www.test.com", Targets: []string{"2001:db8::1"}, RecordTTL: 30, RecordType: "AAAA"},
 		},

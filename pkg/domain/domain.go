@@ -73,6 +73,9 @@ func splitSuffixByLongestMatch(s string, suffixs []string) (pre, suff string) {
 	pre = s
 	for _, suffix := range suffixs {
 		suffix = Domain(suffix).MustToUnicode().ToFQDN().ToString()
+		if len(s) < len(suffix) {
+			continue
+		}
 		if hasSuffix(s, suffix) && len(suffix) > sufflen {
 			pre = s[:len(s)-len(suffix)]
 			suff = suffix
@@ -98,11 +101,14 @@ func hasSuffix(s, suffix string) bool {
 }
 
 func HostAddDomain(host, domain string) string {
-	host = Domain(host).MustToUnicode().ToDomain().ToString()
-	domain = Domain(domain).MustToUnicode().ToDomain().ToString()
+	host = Domain(host).MustToUnicode().ToFQDN().ToString()
+	domain = Domain(domain).MustToUnicode().ToFQDN().ToString()
 
-	if domain == "" {
-		return host
+	if domain == "." {
+		return Domain(host).MustToUnicode().ToDomain().ToString()
 	}
-	return host + "." + domain
+	if host == "" || host == "." {
+		return Domain(domain).MustToUnicode().ToDomain().ToString()
+	}
+	return Domain(host + domain).MustToUnicode().ToDomain().ToString()
 }
