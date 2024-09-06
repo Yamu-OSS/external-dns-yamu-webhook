@@ -158,3 +158,8 @@ func (p *Provider) convertDnsRecord(req []*endpoint.Endpoint) (map[string][]*DNS
 
 	return rd, nil
 }
+
+// GetDomainFilter returns the domain filter for the provider.
+func (p *Provider) GetDomainFilter() endpoint.DomainFilter {
+	return p.domainFilter
+}
