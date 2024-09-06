@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -54,7 +53,15 @@ func newYamuDDIClient(config *Config) (*httpClient, error) {
 }
 
 // doRequest makes an HTTP request to the Yamu firewall.
-func (c *httpClient) doRequest(method, path string, body io.Reader, data any) error {
+func (c *httpClient) doRequest(method, path string, body []byte, data any) (err error) {
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		log.Errorf("method: %s, path: %s, body: %s err %s", method, path, string(body), err)
+	}()
+
 	p, err := url.Parse(path)
 	if err != nil {
 		return err
@@ -63,7 +70,7 @@ func (c *httpClient) doRequest(method, path string, body io.Reader, data any) er
 	u := c.baseURL.ResolveReference(p)
 	log.Debugf("doRequest: making %s request to %s", method, u)
 
-	req, err := http.NewRequest(method, u.String(), body)
+	req, err := http.NewRequest(method, u.String(), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -112,7 +119,6 @@ func (c *httpClient) GetHostOverrides(zone string) ([]*DNSRecord, error) {
 	)
 
 	if err != nil {
-		log.Errorf("method: %s, path: %s", http.MethodGet, p)
 		return nil, err
 	}
 
@@ -137,12 +143,11 @@ func (c *httpClient) createHostOverride(zone string, jsonBody []byte) error {
 	err := c.doRequest(
 		http.MethodPost,
 		p,
-		bytes.NewReader(jsonBody),
+		jsonBody,
 		nil,
 	)
 
 	if err != nil {
-		log.Errorf("method: %s, path: %s, body: %s", http.MethodPost, p, string(jsonBody))
 		return err
 	}
 
@@ -164,12 +169,11 @@ func (c *httpClient) DeleteHostOverrideBulk(zone string, rrs []*DNSRecord) error
 	err = c.doRequest(
 		http.MethodDelete,
 		p,
-		bytes.NewReader(jsonBody),
+		jsonBody,
 		nil,
 	)
 
 	if err != nil {
-		log.Errorf("method: %s, path: %s, body: %s", http.MethodDelete, p, string(jsonBody))
 		return err
 	}
 
@@ -188,12 +192,11 @@ func (c *httpClient) ZoneExist(domain string) bool {
 		&code,
 	)
 	if err != nil {
-		log.Errorf("Failed to get zone: %s", err)
 		return false
 	}
 
 	if code.RCode != 0 {
-		log.Errorf("Failed to get zone: %s", code.Description)
+		log.Errorf("ZoneExist Failed to get zone: %s", code.Description)
 		return false
 	}
 

@@ -3,6 +3,7 @@ package ddi
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/Yamu-OSS/external-dns-yamu-webhook/pkg/arrays"
 	"github.com/Yamu-OSS/external-dns-yamu-webhook/pkg/domain"
@@ -16,9 +17,10 @@ import (
 type Provider struct {
 	provider.BaseProvider
 
-	client          *httpClient
-	domainFilter    endpoint.DomainFilter
-	domainFilterDDI []string
+	client            *httpClient
+	domainFilter      endpoint.DomainFilter
+	domainFilterRWMux sync.RWMutex
+	domainFilterDDI   []string
 }
 
 var (
@@ -46,12 +48,11 @@ func NewYamuDDIProvider(domainFilter endpoint.DomainFilter, config *Config) (pro
 
 // Records returns the list of HostOverride records in YamuDDI Unbound.
 func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint, err error) {
-	log.Debugf("records: retrieving: %+v", endpoints)
+	log.Infof("records: retrieving: %+v", endpoints)
 
 	p.setDDIDomainFilter()
-
 	endpoints = make([]*endpoint.Endpoint, 0)
-	for _, zone := range p.domainFilterDDI {
+	for _, zone := range p.getDDIDomainFilter() {
 		records, err := p.client.GetHostOverrides(zone)
 		if err != nil {
 			return nil, err
@@ -74,7 +75,7 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 
 // ApplyChanges applies a given set of changes in the DNS provider.
 func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	log.Debugf("apply: changes: %+v", changes)
+	log.Infof("apply: changes: %+v", changes)
 	p.setDDIDomainFilter()
 
 	dels := append(changes.UpdateOld, changes.Delete...)
@@ -106,14 +107,30 @@ func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 	return nil
 }
 
-// setDomainDDIFilter sets the domain filter for the provider.
+// setDomainDDIFilter
 func (p *Provider) setDDIDomainFilter() error {
+	p.domainFilterRWMux.Lock()
+	defer p.domainFilterRWMux.Unlock()
+
+	p.domainFilterDDI = make([]string, 0)
+
 	for _, domain := range p.domainFilter.Filters {
-		if p.client.ZoneExist(domain) {
-			p.domainFilterDDI = append(p.domainFilterDDI, domain)
+		if !p.client.ZoneExist(domain) {
+			continue
 		}
+
+		p.domainFilterDDI = append(p.domainFilterDDI, domain)
 	}
+
 	return nil
+}
+
+// getDDIDomainFilter
+func (p *Provider) getDDIDomainFilter() []string {
+	p.domainFilterRWMux.RLock()
+	defer p.domainFilterRWMux.RUnlock()
+
+	return p.domainFilterDDI
 }
 
 // convertDnsRecord converts the endpoint to DNSRecord.
@@ -124,7 +141,7 @@ func (p *Provider) convertDnsRecord(req []*endpoint.Endpoint) (map[string][]*DNS
 			log.Infof("RecordType %s is not supported", ep.RecordType)
 			continue
 		}
-		pre, suff := domain.SplitSuffixToDomain(ep.DNSName, p.domainFilterDDI)
+		pre, suff := domain.SplitSuffixToDomain(ep.DNSName, p.getDDIDomainFilter())
 		if suff == "" {
 			log.Infof("Does not match zone: %v", ep.DNSName)
 			continue
