@@ -3,6 +3,7 @@ package ddi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/Yamu-OSS/external-dns-yamu-webhook/pkg/arrays"
@@ -94,6 +95,15 @@ func (p *Provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.
 	for _, ep := range endpoints {
 		if !ep.RecordTTL.IsConfigured() {
 			ep.RecordTTL = endpoint.TTL(p.client.DefaultTTL)
+		}
+
+		if ep.RecordType == "CNAME" {
+			for i, t := range ep.Targets {
+				if strings.HasSuffix(t, ".") {
+					continue
+				}
+				ep.Targets[i] = fmt.Sprintf("%s.", t)
+			}
 		}
 	}
 
