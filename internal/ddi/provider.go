@@ -17,10 +17,10 @@ import (
 type Provider struct {
 	provider.BaseProvider
 
-	client            *httpClient
-	domainFilter      endpoint.DomainFilter
-	domainFilterRWMux sync.RWMutex
-	domainFilterDDI   []string
+	client               *httpClient
+	domainFilter         endpoint.DomainFilter
+	domainFilterDDIRWMux sync.RWMutex
+	domainFilterDDI      []string
 }
 
 var (
@@ -109,8 +109,8 @@ func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 
 // setDomainDDIFilter
 func (p *Provider) setDDIDomainFilter() error {
-	p.domainFilterRWMux.Lock()
-	defer p.domainFilterRWMux.Unlock()
+	p.domainFilterDDIRWMux.Lock()
+	defer p.domainFilterDDIRWMux.Unlock()
 
 	p.domainFilterDDI = make([]string, 0)
 
@@ -127,8 +127,8 @@ func (p *Provider) setDDIDomainFilter() error {
 
 // getDDIDomainFilter
 func (p *Provider) getDDIDomainFilter() []string {
-	p.domainFilterRWMux.RLock()
-	defer p.domainFilterRWMux.RUnlock()
+	p.domainFilterDDIRWMux.RLock()
+	defer p.domainFilterDDIRWMux.RUnlock()
 
 	return p.domainFilterDDI
 }
