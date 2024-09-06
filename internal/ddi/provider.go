@@ -48,7 +48,6 @@ func NewYamuDDIProvider(domainFilter endpoint.DomainFilter, config *Config) (pro
 
 // Records returns the list of HostOverride records in YamuDDI Unbound.
 func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint, err error) {
-	log.Infof("records: retrieving: %+v", endpoints)
 
 	p.setDDIDomainFilter()
 	endpoints = make([]*endpoint.Endpoint, 0)
@@ -68,7 +67,8 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 			endpoints = append(endpoints, ep)
 		}
 	}
-	log.Infof("records: retrieved records from YamuDDI")
+
+	log.Infof("records: retrieving: %+v", endpoints)
 
 	return endpoints, nil
 }
