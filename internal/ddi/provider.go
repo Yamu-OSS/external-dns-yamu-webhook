@@ -21,6 +21,7 @@ type Provider struct {
 	domainFilter         endpoint.DomainFilter
 	domainFilterDDIRWMux sync.RWMutex
 	domainFilterDDI      []string
+	config               *Config
 }
 
 var (
@@ -41,6 +42,7 @@ func NewYamuDDIProvider(domainFilter endpoint.DomainFilter, config *Config) (pro
 	p := &Provider{
 		client:       c,
 		domainFilter: domainFilter,
+		config:       config,
 	}
 
 	return p, nil
@@ -82,6 +84,18 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 	}
 
 	log.Infof("records: retrieving: %+v", endpoints)
+
+	return endpoints, nil
+}
+
+// AdjustEndpoints adjusts the endpoints to the provider's requirements.
+func (p *Provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
+	// Update user specified TTL (0 == disabled)
+	for _, ep := range endpoints {
+		if !ep.RecordTTL.IsConfigured() {
+			ep.RecordTTL = endpoint.TTL(p.client.DefaultTTL)
+		}
+	}
 
 	return endpoints, nil
 }
