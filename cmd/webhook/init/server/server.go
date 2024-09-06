@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/crutonjohn/external-dns-provider-opnsense/cmd/webhook/init/configuration"
-	"github.com/crutonjohn/external-dns-provider-opnsense/pkg/webhook"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/cmd/webhook/init/configuration"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/pkg/webhook"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -21,13 +21,13 @@ import (
 // HealthCheckHandler returns the status of the service
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
 // ReadinessHandler returns whether the service is ready to accept requests
 func ReadinessHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
 // Init initializes the http server

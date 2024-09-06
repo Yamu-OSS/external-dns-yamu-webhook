@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -41,6 +42,12 @@ func (p *Webhook) acceptHeaderCheck(w http.ResponseWriter, r *http.Request) erro
 	return p.headerCheck(false, w, r)
 }
 
+var (
+	headerCheckBaseErrMsg         = "client must provide"
+	headerCheckContentTypeErrMsg  = fmt.Sprintf("%s a content type", headerCheckBaseErrMsg)
+	headerCheckAcceptHeaderErrMsg = fmt.Sprintf("%s an accept header", headerCheckBaseErrMsg)
+)
+
 func (p *Webhook) headerCheck(isContentType bool, w http.ResponseWriter, r *http.Request) error {
 	var header string
 	if isContentType {
@@ -52,14 +59,11 @@ func (p *Webhook) headerCheck(isContentType bool, w http.ResponseWriter, r *http
 	if len(header) == 0 {
 		w.Header().Set(contentTypeHeader, contentTypePlaintext)
 		w.WriteHeader(http.StatusNotAcceptable)
-
-		msg := "client must provide "
-		if isContentType {
-			msg += "a content type"
-		} else {
-			msg += "an accept header"
+		msg := headerCheckContentTypeErrMsg
+		if !isContentType {
+			msg = headerCheckAcceptHeaderErrMsg
 		}
-		err := fmt.Errorf(msg)
+		err := errors.New(msg)
 
 		_, writeErr := fmt.Fprint(w, err.Error())
 		if writeErr != nil {

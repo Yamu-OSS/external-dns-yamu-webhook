@@ -1,14 +1,13 @@
-module github.com/crutonjohn/external-dns-provider-opnsense
+module github.com/Yamu-OSS/external-dns-yamu-webhook
 
-go 1.22.2
-
-toolchain go1.22.3
+go 1.22.4
 
 require (
 	github.com/caarlos0/env/v11 v11.0.1
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/prometheus/client_golang v1.19.1
 	github.com/sirupsen/logrus v1.9.3
+	golang.org/x/net v0.25.0
 	sigs.k8s.io/external-dns v0.14.2
 )
 
@@ -28,7 +27,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect

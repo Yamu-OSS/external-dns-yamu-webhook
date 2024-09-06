@@ -3,27 +3,27 @@ package main
 import (
 	"fmt"
 
-	"github.com/crutonjohn/external-dns-provider-opnsense/cmd/webhook/init/configuration"
-	"github.com/crutonjohn/external-dns-provider-opnsense/cmd/webhook/init/dnsprovider"
-	"github.com/crutonjohn/external-dns-provider-opnsense/cmd/webhook/init/logging"
-	"github.com/crutonjohn/external-dns-provider-opnsense/cmd/webhook/init/server"
-	"github.com/crutonjohn/external-dns-provider-opnsense/pkg/webhook"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/cmd/webhook/init/configuration"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/cmd/webhook/init/dnsprovider"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/cmd/webhook/init/logging"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/cmd/webhook/init/server"
+	"github.com/Yamu-OSS/external-dns-yamu-webhook/pkg/webhook"
 	log "github.com/sirupsen/logrus"
 )
 
 const banner = `
-external-dns-provider-opnsense
-version: %s (%s)
-
+external-dns-provider-yamu
+build tag: %s
+build date: %s
+git commit: %s
 `
 
 var (
-	Version = "local"
-	Gitsha  = "?"
+	buildTime, gitCommitID, buildTag string
 )
 
 func main() {
-	fmt.Printf(banner, Version, Gitsha)
+	fmt.Printf(banner, buildTag, buildTime, gitCommitID)
 
 	logging.Init()
 

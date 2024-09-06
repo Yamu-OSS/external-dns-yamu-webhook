@@ -53,7 +53,7 @@
       name: webhook
       webhook:
         image:
-          repository: ghcr.io/Yamu-OSS/external-dns-yamu-webhook
+          repository: ghcr.io/yamu-oss/external-dns-yamu-webhook
           tag: main # replace with a versioned release tag
         env:
           - name: YAMU_API_USER
@@ -70,6 +70,14 @@
             value: https://192.168.1.1 # 替换为SmartDDI网管地址
           - name: LOG_LEVEL
             value: debug
+          - name: VIEW
+            value: "default" # 替换为客户默认视图
+          - name: DEFAULT_TTL
+            value: "600" # 替换为客户默认TTL
+          - name: DOMAIN_FILTER
+            value: "yamu.com,yamu1.com" # 替换为客户域名
+          - name: YAMU_OPENAPI_TIMEOUT
+            value: 60
         livenessProbe:
           httpGet:
             path: /healthz
@@ -87,12 +95,11 @@
     policy: sync
     sources: ["ingress", "service", "crd"]
     registry: noop
-    domainFilters: ["yamu.com"] # 替换为客户域名
     ```
 
 7. 安装
 
     ```sh
-    helm install external-dns-yamu external-dns/external-dns -f external-dns-yamu-values yaml --version 1.1.3 -n external-dns
+    helm install external-dns-yamu external-dns/external-dns -f external-dns-yamu-values yaml --version 1.14.5 -n external-dns
     ```
 
