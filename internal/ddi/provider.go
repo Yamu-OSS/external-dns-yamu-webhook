@@ -46,6 +46,11 @@ func NewYamuDDIProvider(domainFilter endpoint.DomainFilter, config *Config) (pro
 	return p, nil
 }
 
+type EndpointKey struct {
+	DNSName    string
+	RecordType string
+}
+
 // Records returns the list of HostOverride records in YamuDDI Unbound.
 func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint, err error) {
 
@@ -57,13 +62,21 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 			return nil, err
 		}
 
+		epMap := map[EndpointKey]*endpoint.Endpoint{}
 		for _, record := range records {
-			ep := &endpoint.Endpoint{
-				DNSName:    domain.HostAddDomain(record.Name, zone),
-				RecordType: record.Rtype,
-				Targets:    endpoint.NewTargets(fmt.Sprintf("%v", record.Rdata)),
-				RecordTTL:  endpoint.TTL(record.TTL),
+			dnsName := domain.HostAddDomain(record.Name, zone)
+			if _, ok := epMap[EndpointKey{dnsName, record.Rtype}]; !ok {
+				epMap[EndpointKey{dnsName, record.Rtype}] = &endpoint.Endpoint{
+					DNSName:    dnsName,
+					RecordType: record.Rtype,
+					RecordTTL:  endpoint.TTL(record.TTL),
+				}
 			}
+			epMap[EndpointKey{dnsName, record.Rtype}].Targets = append(
+				epMap[EndpointKey{dnsName, record.Rtype}].Targets, fmt.Sprintf("%v", record.Rdata))
+		}
+
+		for _, ep := range epMap {
 			endpoints = append(endpoints, ep)
 		}
 	}
