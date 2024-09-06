@@ -75,8 +75,13 @@ func (p *Provider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint,
 					RecordTTL:  endpoint.TTL(record.TTL),
 				}
 			}
+
+			rdata := fmt.Sprintf("%v", record.Rdata)
+			if record.Rtype == "CNAME" {
+				rdata = strings.TrimSuffix(rdata, ".")
+			}
 			epMap[EndpointKey{dnsName, record.Rtype}].Targets = append(
-				epMap[EndpointKey{dnsName, record.Rtype}].Targets, fmt.Sprintf("%v", record.Rdata))
+				epMap[EndpointKey{dnsName, record.Rtype}].Targets, rdata)
 		}
 
 		for _, ep := range epMap {
@@ -95,15 +100,6 @@ func (p *Provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.
 	for _, ep := range endpoints {
 		if !ep.RecordTTL.IsConfigured() {
 			ep.RecordTTL = endpoint.TTL(p.client.DefaultTTL)
-		}
-
-		if ep.RecordType == "CNAME" {
-			for i, t := range ep.Targets {
-				if strings.HasSuffix(t, ".") {
-					continue
-				}
-				ep.Targets[i] = fmt.Sprintf("%s.", t)
-			}
 		}
 	}
 
