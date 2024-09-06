@@ -41,6 +41,7 @@ func (p *Webhook) acceptHeaderCheck(w http.ResponseWriter, r *http.Request) erro
 	return p.headerCheck(false, w, r)
 }
 
+// nolint: govet
 func (p *Webhook) headerCheck(isContentType bool, w http.ResponseWriter, r *http.Request) error {
 	var header string
 	if isContentType {
@@ -52,7 +53,6 @@ func (p *Webhook) headerCheck(isContentType bool, w http.ResponseWriter, r *http
 	if len(header) == 0 {
 		w.Header().Set(contentTypeHeader, contentTypePlaintext)
 		w.WriteHeader(http.StatusNotAcceptable)
-
 		msg := "client must provide "
 		if isContentType {
 			msg += "a content type"

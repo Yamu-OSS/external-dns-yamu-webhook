@@ -108,7 +108,7 @@ func (p *Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) erro
 }
 
 // setDomainDDIFilter
-func (p *Provider) setDDIDomainFilter() error {
+func (p *Provider) setDDIDomainFilter() {
 	p.domainFilterDDIRWMux.Lock()
 	defer p.domainFilterDDIRWMux.Unlock()
 
@@ -121,8 +121,6 @@ func (p *Provider) setDDIDomainFilter() error {
 
 		p.domainFilterDDI = append(p.domainFilterDDI, domain)
 	}
-
-	return nil
 }
 
 // getDDIDomainFilter
